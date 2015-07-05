@@ -124,4 +124,9 @@ public class MainActivity extends AppCompatActivity {
     private void stopMockingLocation() {
         timerTask.cancel();
     }
+
+    @Override
+    protected void onDestroy() {
+        locationManager.removeTestProvider(mocLocationProvider);
+    }
 }
