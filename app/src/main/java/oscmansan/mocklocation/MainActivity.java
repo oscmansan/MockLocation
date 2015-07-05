@@ -24,7 +24,6 @@ public class MainActivity extends AppCompatActivity {
     private static final double longitude = 2.17;
     private static final int TIMER_PERIOD = 5000;
 
-
     private String mocLocationProvider;
     private LocationManager locationManager;
     private Switch sw;
@@ -108,7 +107,7 @@ public class MainActivity extends AppCompatActivity {
                 MainActivity.this.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        Log.d(LOG_TAG, "mock " + System.currentTimeMillis() / 1000 % 100);
+                        Log.d(LOG_TAG, "mock " + System.currentTimeMillis());
                         Location mockLocation = new Location(mocLocationProvider);
                         mockLocation.setLatitude(latitude);
                         mockLocation.setLongitude(longitude);
