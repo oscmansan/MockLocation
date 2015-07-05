@@ -148,6 +148,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void stopMockingLocation() {
+        ((EditText) findViewById(R.id.edit_text)).setText("");
         findViewById(R.id.status).setVisibility(View.INVISIBLE);
         timerTask.cancel();
     }
