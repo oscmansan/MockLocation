@@ -22,6 +22,8 @@ public class MainActivity extends AppCompatActivity {
     private static final String LOG_TAG = MainActivity.class.getSimpleName();
     private static final double latitude = 41.386667;
     private static final double longitude = 2.17;
+    private static final int TIMER_PERIOD = 5000;
+
 
     private String mocLocationProvider;
     private LocationManager locationManager;
@@ -96,7 +98,7 @@ public class MainActivity extends AppCompatActivity {
     private void startMockingLocation() {
         timer = new Timer();
         initTimerTask();
-        timer.schedule(timerTask, 0, 5000);
+        timer.schedule(timerTask, 0, TIMER_PERIOD);
     }
 
     private void initTimerTask() {
@@ -106,12 +108,12 @@ public class MainActivity extends AppCompatActivity {
                 MainActivity.this.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        Log.d(LOG_TAG, "mock " + System.currentTimeMillis());
+                        Log.d(LOG_TAG, "mock " + System.currentTimeMillis() / 1000 % 100);
                         Location mockLocation = new Location(mocLocationProvider);
                         mockLocation.setLatitude(latitude);
                         mockLocation.setLongitude(longitude);
-                        mockLocation.setTime(System.currentTimeMillis());
                         mockLocation.setAccuracy(5);
+                        mockLocation.setTime(System.currentTimeMillis());
                         mockLocation.setElapsedRealtimeNanos(SystemClock.elapsedRealtimeNanos());
                         locationManager.setTestProviderLocation(mocLocationProvider, mockLocation);
                     }
@@ -122,6 +124,5 @@ public class MainActivity extends AppCompatActivity {
 
     private void stopMockingLocation() {
         timerTask.cancel();
-        locationManager.removeTestProvider(mocLocationProvider);
     }
 }
