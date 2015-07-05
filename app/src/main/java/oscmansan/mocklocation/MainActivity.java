@@ -1,6 +1,8 @@
 package oscmansan.mocklocation;
 
 import android.content.Context;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -11,8 +13,14 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.Switch;
+import android.widget.TextView;
+import android.widget.Toast;
 
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -20,9 +28,9 @@ import java.util.TimerTask;
 public class MainActivity extends AppCompatActivity {
 
     private static final String LOG_TAG = MainActivity.class.getSimpleName();
-    private static final double latitude = 41.386667;
-    private static final double longitude = 2.17;
-    private static final int TIMER_PERIOD = 5000;
+    private double latitude = 41.386667;
+    private double longitude = 2.17;
+    private static final int TIMER_PERIOD = 3000;
 
     private String mocLocationProvider;
     private LocationManager locationManager;
@@ -64,8 +72,7 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 if (sw.isChecked()) {
                     startMockingLocation();
-                }
-                else {
+                } else {
                     stopMockingLocation();
                 }
             }
@@ -95,6 +102,25 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startMockingLocation() {
+        try {
+            Geocoder geocoder = new Geocoder(this);
+            String editText = ((EditText) findViewById(R.id.edit_text)).getText().toString();
+            List<Address> addresses = geocoder.getFromLocationName(editText, 1);
+            if (addresses.size() > 0) {
+                latitude = addresses.get(0).getLatitude();
+                longitude = addresses.get(0).getLongitude();
+            }
+            else
+                Toast.makeText(this, "Location not found", Toast.LENGTH_SHORT).show();
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        TextView status = (TextView) findViewById(R.id.status);
+        status.setText("Location set to " + latitude + ", " + longitude);
+        status.setVisibility(View.VISIBLE);
+
         timer = new Timer();
         initTimerTask();
         timer.schedule(timerTask, 0, TIMER_PERIOD);
@@ -122,6 +148,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void stopMockingLocation() {
+        findViewById(R.id.status).setVisibility(View.INVISIBLE);
         timerTask.cancel();
     }
 
