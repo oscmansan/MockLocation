@@ -169,7 +169,7 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         protected void onPostExecute(List<Address> addresses) {
-            if (addresses.size() > 0) {
+            if (addresses != null && addresses.size() > 0) {
                 latitude = addresses.get(0).getLatitude();
                 longitude = addresses.get(0).getLongitude();
 
