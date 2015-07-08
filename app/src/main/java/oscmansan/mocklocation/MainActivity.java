@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.location.Address;
 import android.location.Geocoder;
+import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.design.widget.Snackbar;
@@ -26,8 +27,8 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
 
     private static final String LOG_TAG = MainActivity.class.getSimpleName();
-    private double latitude = 41.386667;
-    private double longitude = 2.17;
+    private double latitude;
+    private double longitude;
 
     Switch sw;
     SharedPreferences sharedPref;
@@ -73,6 +74,14 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+
+        findViewById(R.id.hidden).setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                ((EditText) findViewById(R.id.edit_text)).setText("Plaça de Catalunya, Barcelona");
+                return true;
+            }
+        });
     }
 
     private boolean isMyServiceRunning(Class<?> serviceClass) {
@@ -86,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void restoreState() {
-        ((EditText) findViewById(R.id.edit_text)).setText(sharedPref.getString("address",""));
+        ((EditText) findViewById(R.id.edit_text)).setText(sharedPref.getString("address", ""));
         latitude = Double.longBitsToDouble(sharedPref.getLong("latitude", 0));
         longitude = Double.longBitsToDouble(sharedPref.getLong("longitude", 0));
         TextView status = (TextView) findViewById(R.id.status);
@@ -128,8 +137,34 @@ public class MainActivity extends AppCompatActivity {
             if (addresses.size() > 0) {
                 latitude = addresses.get(0).getLatitude();
                 longitude = addresses.get(0).getLongitude();
+
+                TextView status = (TextView) findViewById(R.id.status);
+                status.setText("Location set to " + latitude + ", " + longitude);
+                status.setVisibility(View.VISIBLE);
+
+                Snackbar
+                        .make(findViewById(R.id.snackbar),
+                                "Do you want to open Maps?",
+                                Snackbar.LENGTH_LONG
+                        )
+                        .setAction("Go ahead", new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                Intent intent = new Intent(Intent.ACTION_VIEW);
+                                intent.setData(Uri.parse("geo:" + latitude + "," + longitude + "?z=13"));
+                                startActivity(intent);
+                            }
+                        })
+                        .show();
+
+                Intent intent = new Intent(this, InjectLocationService.class);
+                intent.putExtra("latitude", latitude);
+                intent.putExtra("longitude", longitude);
+                startService(intent);
             }
             else {
+                sw.setChecked(false);
+
                 Snackbar snackbar = Snackbar.make(
                         findViewById(R.id.snackbar),
                         "Location not found",
@@ -145,15 +180,6 @@ public class MainActivity extends AppCompatActivity {
         catch (IOException e) {
             e.printStackTrace();
         }
-
-        TextView status = (TextView) findViewById(R.id.status);
-        status.setText("Location set to " + latitude + ", " + longitude);
-        status.setVisibility(View.VISIBLE);
-
-        Intent intent = new Intent(this, InjectLocationService.class);
-        intent.putExtra("latitude", latitude);
-        intent.putExtra("longitude", longitude);
-        startService(intent);
     }
 
     private void stopMockingLocation() {
