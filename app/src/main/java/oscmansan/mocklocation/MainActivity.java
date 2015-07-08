@@ -29,6 +29,7 @@ public class MainActivity extends AppCompatActivity {
     private double latitude = 41.386667;
     private double longitude = 2.17;
 
+    Switch sw;
     SharedPreferences sharedPref;
 
     @Override
@@ -36,13 +37,12 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        final Switch sw = (Switch) findViewById(R.id.sw);
+        sw = (Switch) findViewById(R.id.sw);
         sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
 
-        if (isMyServiceRunning(InjectLocationService.class)) {
-            ((EditText) findViewById(R.id.edit_text)).setText(sharedPref.getString("address",""));
-            sw.setChecked(true);
-        }
+        if (isMyServiceRunning(InjectLocationService.class))
+            restoreState();
+
         sw.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -61,12 +61,15 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        findViewById(R.id.edit_text).setOnFocusChangeListener(new View.OnFocusChangeListener() {
+        final EditText editText = (EditText) findViewById(R.id.edit_text);
+        editText.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
                 if (!hasFocus) {
                     InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(Activity.INPUT_METHOD_SERVICE);
                     inputMethodManager.hideSoftInputFromWindow(v.getWindowToken(), 0);
+                    if (editText.getText().toString().equals(""))
+                        editText.setText(null);
                 }
             }
         });
@@ -80,6 +83,16 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         return false;
+    }
+
+    private void restoreState() {
+        ((EditText) findViewById(R.id.edit_text)).setText(sharedPref.getString("address",""));
+        latitude = Double.longBitsToDouble(sharedPref.getLong("latitude", 0));
+        longitude = Double.longBitsToDouble(sharedPref.getLong("longitude", 0));
+        TextView status = (TextView) findViewById(R.id.status);
+        status.setText("Location set to " + latitude + ", " + longitude);
+        status.setVisibility(View.VISIBLE);
+        sw.setChecked(true);
     }
 
     @Override
@@ -106,8 +119,11 @@ public class MainActivity extends AppCompatActivity {
 
     private void startMockingLocation() {
         try {
+            EditText editText = (EditText) findViewById(R.id.edit_text);
+            editText.clearFocus();
+
             Geocoder geocoder = new Geocoder(this);
-            String address = ((EditText) findViewById(R.id.edit_text)).getText().toString();
+            String address = editText.getText().toString();
             List<Address> addresses = geocoder.getFromLocationName(address, 1);
             if (addresses.size() > 0) {
                 latitude = addresses.get(0).getLatitude();
