@@ -1,5 +1,6 @@
 package oscmansan.mocklocation;
 
+import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
@@ -14,6 +15,7 @@ import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -48,6 +50,23 @@ public class MainActivity extends AppCompatActivity {
                     startMockingLocation();
                 } else {
                     stopMockingLocation();
+                }
+            }
+        });
+
+        findViewById(android.R.id.content).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                findViewById(R.id.edit_text).clearFocus();
+            }
+        });
+
+        findViewById(R.id.edit_text).setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                if (!hasFocus) {
+                    InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(Activity.INPUT_METHOD_SERVICE);
+                    inputMethodManager.hideSoftInputFromWindow(v.getWindowToken(), 0);
                 }
             }
         });
@@ -88,8 +107,8 @@ public class MainActivity extends AppCompatActivity {
     private void startMockingLocation() {
         try {
             Geocoder geocoder = new Geocoder(this);
-            String editText = ((EditText) findViewById(R.id.edit_text)).getText().toString();
-            List<Address> addresses = geocoder.getFromLocationName(editText, 1);
+            String address = ((EditText) findViewById(R.id.edit_text)).getText().toString();
+            List<Address> addresses = geocoder.getFromLocationName(address, 1);
             if (addresses.size() > 0) {
                 latitude = addresses.get(0).getLatitude();
                 longitude = addresses.get(0).getLongitude();
