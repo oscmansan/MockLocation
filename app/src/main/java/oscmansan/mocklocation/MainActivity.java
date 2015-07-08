@@ -8,6 +8,7 @@ import android.content.SharedPreferences;
 import android.location.Address;
 import android.location.Geocoder;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.design.widget.Snackbar;
@@ -127,13 +128,47 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startMockingLocation() {
-        try {
-            EditText editText = (EditText) findViewById(R.id.edit_text);
-            editText.clearFocus();
+        EditText editText = (EditText) findViewById(R.id.edit_text);
+        editText.clearFocus();
 
-            Geocoder geocoder = new Geocoder(this);
-            String address = editText.getText().toString();
-            List<Address> addresses = geocoder.getFromLocationName(address, 1);
+        String address = editText.getText().toString();
+        new GeocoderTask().execute(address);
+    }
+
+    private void stopMockingLocation() {
+        ((EditText) findViewById(R.id.edit_text)).setText("");
+        findViewById(R.id.status).setVisibility(View.INVISIBLE);
+        Intent intent = new Intent(this, InjectLocationService.class);
+        stopService(intent);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        SharedPreferences.Editor editor = sharedPref.edit();
+        editor.putString("address", ((EditText) findViewById(R.id.edit_text)).getText().toString());
+        editor.putLong("latitude", Double.doubleToRawLongBits(latitude));
+        editor.putLong("longitude", Double.doubleToRawLongBits(longitude));
+        editor.apply();
+    }
+
+    private class GeocoderTask extends AsyncTask<String,Void,List<Address>> {
+
+        @Override
+        protected List<Address> doInBackground(String... params) {
+            try {
+                Geocoder geocoder = new Geocoder(MainActivity.this);
+                return geocoder.getFromLocationName(params[0], 1);
+            }
+            catch (IOException e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(List<Address> addresses) {
             if (addresses.size() > 0) {
                 latitude = addresses.get(0).getLatitude();
                 longitude = addresses.get(0).getLongitude();
@@ -151,13 +186,13 @@ public class MainActivity extends AppCompatActivity {
                             @Override
                             public void onClick(View v) {
                                 Intent intent = new Intent(Intent.ACTION_VIEW);
-                                intent.setData(Uri.parse("geo:" + latitude + "," + longitude + "?z=13"));
+                                intent.setData(Uri.parse("geo:" + latitude + "," + longitude + "?z=15"));
                                 startActivity(intent);
                             }
                         })
                         .show();
 
-                Intent intent = new Intent(this, InjectLocationService.class);
+                Intent intent = new Intent(MainActivity.this, InjectLocationService.class);
                 intent.putExtra("latitude", latitude);
                 intent.putExtra("longitude", longitude);
                 startService(intent);
@@ -177,26 +212,5 @@ public class MainActivity extends AppCompatActivity {
                 snackbar.show();
             }
         }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void stopMockingLocation() {
-        ((EditText) findViewById(R.id.edit_text)).setText("");
-        findViewById(R.id.status).setVisibility(View.INVISIBLE);
-        Intent intent = new Intent(this, InjectLocationService.class);
-        stopService(intent);
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-
-        SharedPreferences.Editor editor = sharedPref.edit();
-        editor.putString("address", ((EditText) findViewById(R.id.edit_text)).getText().toString());
-        editor.putLong("latitude", Double.doubleToRawLongBits(latitude));
-        editor.putLong("longitude", Double.doubleToRawLongBits(longitude));
-        editor.apply();
     }
 }
