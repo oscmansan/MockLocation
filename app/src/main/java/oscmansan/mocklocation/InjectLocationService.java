@@ -1,9 +1,12 @@
 package oscmansan.mocklocation;
 
+import android.app.Notification;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.BitmapFactory;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -11,6 +14,7 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
+import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 import java.util.Timer;
@@ -68,11 +72,31 @@ public class InjectLocationService extends Service {
             longitude = Double.longBitsToDouble(sharedPref.getLong("longitude", 0));
         }
 
+        startForeground(1, buildNotification());
+
         Timer timer = new Timer();
         initTimerTask();
         timer.schedule(timerTask, 0, TIMER_PERIOD);
 
         return START_STICKY;
+    }
+
+    private Notification buildNotification() {
+        NotificationCompat.Builder builder =
+                new NotificationCompat.Builder(this)
+                        .setSmallIcon(R.mipmap.ic_launcher)
+                        .setLargeIcon(BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher))
+                        .setContentTitle("Mock Location")
+                        .setContentText("Location set to " + latitude + ", " + longitude)
+                        .setColor(getResources().getColor(R.color.accent_material_light));
+
+
+        Intent notificationIntent = new Intent(this, MainActivity.class);
+        PendingIntent contentIntent = PendingIntent.getActivity(this, 0, notificationIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT);
+        builder.setContentIntent(contentIntent);
+
+        return builder.build();
     }
 
     private void initTimerTask() {
@@ -96,6 +120,8 @@ public class InjectLocationService extends Service {
         super.onDestroy();
         timerTask.cancel();
         locationManager.removeTestProvider(mocLocationProvider);
+
+        stopForeground(true);
     }
 
     @Override
