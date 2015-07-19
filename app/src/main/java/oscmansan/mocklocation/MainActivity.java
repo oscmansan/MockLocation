@@ -16,13 +16,18 @@ import android.support.v7.app.AppCompatActivity;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.EditText;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
@@ -31,8 +36,9 @@ public class MainActivity extends AppCompatActivity {
     private double latitude;
     private double longitude;
 
-    Switch sw;
-    SharedPreferences sharedPref;
+    private Switch sw;
+    private SharedPreferences sharedPref;
+    private ArrayAdapter<String> adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,9 +47,6 @@ public class MainActivity extends AppCompatActivity {
 
         sw = (Switch) findViewById(R.id.sw);
         sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
-
-        if (isMyServiceRunning(InjectLocationService.class))
-            restoreState();
 
         sw.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -63,7 +66,13 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        final EditText editText = (EditText) findViewById(R.id.edit_text);
+        final AutoCompleteTextView editText = (AutoCompleteTextView) findViewById(R.id.edit_text);
+        ArrayList<String> history = new ArrayList<>();
+        for (int i = 0; i < sharedPref.getInt("size",0); ++i)
+            history.add(sharedPref.getString(String.valueOf(i),""));
+        adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, history);
+        editText.setAdapter(adapter);
+
         editText.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
@@ -73,6 +82,14 @@ public class MainActivity extends AppCompatActivity {
                     if (editText.getText().toString().equals(""))
                         editText.setText(null);
                 }
+            }
+        });
+
+        editText.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                editText.showDropDown();
+                return false;
             }
         });
 
@@ -95,16 +112,6 @@ public class MainActivity extends AppCompatActivity {
         return false;
     }
 
-    private void restoreState() {
-        ((EditText) findViewById(R.id.edit_text)).setText(sharedPref.getString("address", ""));
-        latitude = Double.longBitsToDouble(sharedPref.getLong("latitude", 0));
-        longitude = Double.longBitsToDouble(sharedPref.getLong("longitude", 0));
-        TextView status = (TextView) findViewById(R.id.status);
-        status.setText("Location set to " + latitude + ", " + longitude);
-        status.setVisibility(View.VISIBLE);
-        sw.setChecked(true);
-    }
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
@@ -117,14 +124,34 @@ public class MainActivity extends AppCompatActivity {
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
 
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
+        switch (item.getItemId()) {
+            case R.id.action_clear_history:
+                adapter.clear();
+                Toast.makeText(this, "History cleared", Toast.LENGTH_SHORT).show();
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
         }
+    }
 
-        return super.onOptionsItemSelected(item);
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (isMyServiceRunning(InjectLocationService.class))
+            restoreState();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        saveState();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        saveState();
     }
 
     private void startMockingLocation() {
@@ -132,6 +159,9 @@ public class MainActivity extends AppCompatActivity {
         editText.clearFocus();
 
         String address = editText.getText().toString();
+        adapter.remove(address);
+        adapter.add(address);
+
         new GeocoderTask().execute(address);
     }
 
@@ -142,14 +172,24 @@ public class MainActivity extends AppCompatActivity {
         stopService(intent);
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
+    private void restoreState() {
+        ((EditText) findViewById(R.id.edit_text)).setText(sharedPref.getString("address", ""));
+        latitude = Double.longBitsToDouble(sharedPref.getLong("latitude", 0));
+        longitude = Double.longBitsToDouble(sharedPref.getLong("longitude", 0));
+        TextView status = (TextView) findViewById(R.id.status);
+        status.setText("Location set to " + latitude + ", " + longitude);
+        status.setVisibility(View.VISIBLE);
+        sw.setChecked(true);
+    }
 
+    private void saveState() {
         SharedPreferences.Editor editor = sharedPref.edit();
         editor.putString("address", ((EditText) findViewById(R.id.edit_text)).getText().toString());
         editor.putLong("latitude", Double.doubleToRawLongBits(latitude));
         editor.putLong("longitude", Double.doubleToRawLongBits(longitude));
+        editor.putInt("size", adapter.getCount());
+        for (int i = 0; i < adapter.getCount(); ++i)
+            editor.putString(String.valueOf(i), adapter.getItem(i));
         editor.apply();
     }
 
