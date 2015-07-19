@@ -22,6 +22,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.EditText;
+import android.widget.Filter;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -70,7 +71,23 @@ public class MainActivity extends AppCompatActivity {
         ArrayList<String> history = new ArrayList<>();
         for (int i = 0; i < sharedPref.getInt("size",0); ++i)
             history.add(sharedPref.getString(String.valueOf(i),""));
-        adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, history);
+        adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_dropdown_item, history) {
+            // http://stackoverflow.com/a/9192263
+            @Override
+            public Filter getFilter() {
+                return new Filter() {
+                    @Override
+                    protected FilterResults performFiltering(CharSequence constraint) {
+                        return null;
+                    }
+
+                    @Override
+                    protected void publishResults(CharSequence constraint, FilterResults results) {
+
+                    }
+                };
+            }
+        };
         editText.setAdapter(adapter);
 
         editText.setOnFocusChangeListener(new View.OnFocusChangeListener() {
@@ -88,7 +105,8 @@ public class MainActivity extends AppCompatActivity {
         editText.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                editText.showDropDown();
+                if (!adapter.isEmpty())
+                    editText.showDropDown();
                 return false;
             }
         });
@@ -143,12 +161,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onPause() {
-        super.onPause();
-        saveState();
-    }
-
-    @Override
     protected void onDestroy() {
         super.onDestroy();
         saveState();
@@ -159,9 +171,6 @@ public class MainActivity extends AppCompatActivity {
         editText.clearFocus();
 
         String address = editText.getText().toString();
-        adapter.remove(address);
-        adapter.add(address);
-
         new GeocoderTask().execute(address);
     }
 
@@ -195,11 +204,14 @@ public class MainActivity extends AppCompatActivity {
 
     private class GeocoderTask extends AsyncTask<String,Void,List<Address>> {
 
+        private String address;
+
         @Override
         protected List<Address> doInBackground(String... params) {
             try {
+                address = params[0];
                 Geocoder geocoder = new Geocoder(MainActivity.this);
-                return geocoder.getFromLocationName(params[0], 1);
+                return geocoder.getFromLocationName(address, 1);
             }
             catch (IOException e) {
                 e.printStackTrace();
@@ -210,6 +222,9 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(List<Address> addresses) {
             if (addresses != null && addresses.size() > 0) {
+                adapter.remove(address);
+                adapter.add(address);
+
                 latitude = addresses.get(0).getLatitude();
                 longitude = addresses.get(0).getLongitude();
 
