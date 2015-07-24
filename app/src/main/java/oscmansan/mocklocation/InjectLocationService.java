@@ -86,7 +86,7 @@ public class InjectLocationService extends Service {
                 new NotificationCompat.Builder(this)
                         .setContentTitle("Mock Location")
                         .setContentText("Location set to " + latitude + ", " + longitude)
-                        .setSmallIcon(R.mipmap.ic_launcher)
+                        .setSmallIcon(R.drawable.ic_my_location)
                         .setLargeIcon(BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher))
                         .setColor(getResources().getColor(R.color.accent_material_light));
 

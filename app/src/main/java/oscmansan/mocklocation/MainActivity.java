@@ -38,6 +38,7 @@ public class MainActivity extends AppCompatActivity {
     private double longitude;
 
     private Switch sw;
+    private EditText editText;
     private SharedPreferences sharedPref;
     private ArrayAdapter<String> adapter;
 
@@ -67,7 +68,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        final AutoCompleteTextView editText = (AutoCompleteTextView) findViewById(R.id.edit_text);
+        editText = (EditText) findViewById(R.id.edit_text);
         ArrayList<String> history = new ArrayList<>();
         for (int i = 0; i < sharedPref.getInt("size",0); ++i)
             history.add(sharedPref.getString(String.valueOf(i),""));
@@ -88,7 +89,7 @@ public class MainActivity extends AppCompatActivity {
                 };
             }
         };
-        editText.setAdapter(adapter);
+        ((AutoCompleteTextView) editText).setAdapter(adapter);
 
         editText.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
@@ -106,7 +107,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 if (!adapter.isEmpty())
-                    editText.showDropDown();
+                    ((AutoCompleteTextView) editText).showDropDown();
                 return false;
             }
         });
@@ -114,7 +115,7 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.hidden).setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
-                ((EditText) findViewById(R.id.edit_text)).setText("Plaça de Catalunya, Barcelona");
+                editText.setText("Plaça de Catalunya, Barcelona");
                 return true;
             }
         });
@@ -167,22 +168,23 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startMockingLocation() {
-        EditText editText = (EditText) findViewById(R.id.edit_text);
         editText.clearFocus();
+        editText.setEnabled(false);
 
         String address = editText.getText().toString();
         new GeocoderTask().execute(address);
     }
 
     private void stopMockingLocation() {
-        ((EditText) findViewById(R.id.edit_text)).setText("");
+        editText.setText("");
+        editText.setEnabled(true);
         findViewById(R.id.status).setVisibility(View.INVISIBLE);
         Intent intent = new Intent(this, InjectLocationService.class);
         stopService(intent);
     }
 
     private void restoreState() {
-        ((EditText) findViewById(R.id.edit_text)).setText(sharedPref.getString("address", ""));
+        editText.setText(sharedPref.getString("address", ""));
         latitude = Double.longBitsToDouble(sharedPref.getLong("latitude", 0));
         longitude = Double.longBitsToDouble(sharedPref.getLong("longitude", 0));
         TextView status = (TextView) findViewById(R.id.status);
@@ -193,7 +195,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void saveState() {
         SharedPreferences.Editor editor = sharedPref.edit();
-        editor.putString("address", ((EditText) findViewById(R.id.edit_text)).getText().toString());
+        editor.putString("address", editText.getText().toString());
         editor.putLong("latitude", Double.doubleToRawLongBits(latitude));
         editor.putLong("longitude", Double.doubleToRawLongBits(longitude));
         editor.putInt("size", adapter.getCount());
