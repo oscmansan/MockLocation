@@ -193,6 +193,7 @@ public class MainActivity extends AppCompatActivity {
         status.setText("Location set to " + latitude + ", " + longitude);
         status.setVisibility(View.VISIBLE);
         sw.setChecked(true);
+        editText.setEnabled(false);
     }
 
     private void saveState() {
