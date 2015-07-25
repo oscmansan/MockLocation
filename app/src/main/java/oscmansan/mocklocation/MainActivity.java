@@ -13,7 +13,6 @@ import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -24,7 +23,6 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.EditText;
-import android.widget.Filter;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -42,6 +40,7 @@ public class MainActivity extends AppCompatActivity {
     private Switch sw;
     private EditText editText;
     private SharedPreferences sharedPref;
+    ArrayList<String> history;
     private ArrayAdapter<String> adapter;
 
     @Override
@@ -71,27 +70,10 @@ public class MainActivity extends AppCompatActivity {
         });
 
         editText = (EditText) findViewById(R.id.edit_text);
-        ArrayList<String> history = new ArrayList<>();
+        history = new ArrayList<>();
         for (int i = 0; i < sharedPref.getInt("size",0); ++i)
             history.add(sharedPref.getString(String.valueOf(i),""));
-        adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_dropdown_item, history) {
-            // http://stackoverflow.com/a/9192263
-            @Override
-            public Filter getFilter() {
-                return new Filter() {
-                    @Override
-                    protected FilterResults performFiltering(CharSequence constraint) {
-                        return null;
-                    }
-
-                    @Override
-                    protected void publishResults(CharSequence constraint, FilterResults results) {
-
-                    }
-                };
-            }
-        };
-        ((AutoCompleteTextView) editText).setAdapter(adapter);
+        initAdapter();
 
         ((AutoCompleteTextView) editText).setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -145,7 +127,8 @@ public class MainActivity extends AppCompatActivity {
 
         switch (item.getItemId()) {
             case R.id.action_clear_history:
-                adapter.clear();
+                history = new ArrayList<>();
+                initAdapter();
                 Toast.makeText(this, "History cleared", Toast.LENGTH_SHORT).show();
                 return true;
             default:
@@ -179,6 +162,11 @@ public class MainActivity extends AppCompatActivity {
     private void hideKeyboard(View v) {
         InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(Activity.INPUT_METHOD_SERVICE);
         inputMethodManager.hideSoftInputFromWindow(v.getWindowToken(), 0);
+    }
+
+    private void initAdapter() {
+        adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, history);
+        ((AutoCompleteTextView) editText).setAdapter(adapter);
     }
 
     private void startMockingLocation() {
@@ -238,8 +226,10 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(List<Address> addresses) {
             if (addresses != null && addresses.size() > 0) {
-                adapter.remove(address);
-                adapter.add(address);
+                if (!history.contains(address)) {
+                    history.add(address);
+                    initAdapter();
+                }
 
                 latitude = addresses.get(0).getLatitude();
                 longitude = addresses.get(0).getLongitude();
@@ -264,12 +254,14 @@ public class MainActivity extends AppCompatActivity {
                         .show();
 
                 Intent intent = new Intent(MainActivity.this, InjectLocationService.class);
+                intent.putExtra("address", address);
                 intent.putExtra("latitude", latitude);
                 intent.putExtra("longitude", longitude);
                 startService(intent);
             }
             else {
                 sw.setChecked(false);
+                editText.setEnabled(true);
 
                 Snackbar snackbar = Snackbar.make(
                         findViewById(R.id.snackbar),

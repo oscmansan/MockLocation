@@ -29,6 +29,7 @@ public class InjectLocationService extends Service {
     private String mocLocationProvider;
     private LocationManager locationManager;
     private TimerTask timerTask;
+    private String address;
     private double latitude;
     private double longitude;
 
@@ -63,11 +64,13 @@ public class InjectLocationService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
 
         if (intent != null) {
+            address = intent.getStringExtra("address");
             latitude = intent.getDoubleExtra("latitude", 0);
             longitude = intent.getDoubleExtra("longitude", 0);
         }
         else {
             SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+            address = sharedPref.getString("address","");
             latitude = Double.longBitsToDouble(sharedPref.getLong("latitude", 0));
             longitude = Double.longBitsToDouble(sharedPref.getLong("longitude", 0));
         }
@@ -82,13 +85,15 @@ public class InjectLocationService extends Service {
     }
 
     private Notification buildNotification() {
+        String contentText = "Location set to " + address + " (" + latitude + ", " + longitude + ")";
         NotificationCompat.Builder builder =
                 new NotificationCompat.Builder(this)
                         .setContentTitle("Mock Location")
-                        .setContentText("Location set to " + latitude + ", " + longitude)
+                        .setContentText(contentText)
                         .setSmallIcon(R.drawable.ic_my_location)
                         .setLargeIcon(BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher))
-                        .setColor(getResources().getColor(R.color.accent_material_light));
+                        .setColor(getResources().getColor(R.color.accent_material_light))
+                        .setStyle(new NotificationCompat.BigTextStyle().bigText(contentText));
 
         Intent notificationIntent = new Intent(this, MainActivity.class);
         PendingIntent contentIntent = PendingIntent.getActivity(this, 0, notificationIntent,
