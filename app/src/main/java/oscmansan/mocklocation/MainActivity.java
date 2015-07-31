@@ -16,16 +16,15 @@ import android.support.v7.app.AppCompatActivity;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.EditText;
+import android.widget.Filter;
 import android.widget.Switch;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -40,8 +39,7 @@ public class MainActivity extends AppCompatActivity {
     private Switch sw;
     private EditText editText;
     private SharedPreferences sharedPref;
-    ArrayList<String> history;
-    private ArrayAdapter<String> adapter;
+    private ArrayList<String> addresses;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,10 +68,44 @@ public class MainActivity extends AppCompatActivity {
         });
 
         editText = (EditText) findViewById(R.id.edit_text);
-        history = new ArrayList<>();
-        for (int i = 0; i < sharedPref.getInt("size",0); ++i)
-            history.add(sharedPref.getString(String.valueOf(i),""));
-        initAdapter();
+        addresses = new ArrayList<>();
+        ((AutoCompleteTextView) editText).setAdapter(new ArrayAdapter<String>(
+                this,
+                android.R.layout.simple_spinner_dropdown_item,
+                addresses) {
+                     @Override
+                     public Filter getFilter() {
+                         return new Filter() {
+                             @Override
+                             protected FilterResults performFiltering(CharSequence constraint) {
+                                 FilterResults results = new FilterResults();
+                                 try {
+                                     Geocoder geocoder = new Geocoder(MainActivity.this);
+                                     List<Address> addresses = geocoder.getFromLocationName(constraint.toString(), 5);
+                                     results.values = addresses;
+                                     results.count = addresses.size();
+                                 }
+                                 catch (IOException e) {
+                                     e.printStackTrace();
+                                 }
+                                 return results;
+                             }
+
+                             @Override
+                             protected void publishResults(CharSequence constraint, FilterResults results) {
+                                 addresses.clear();
+                                 for (int i = 0; i < results.count; ++i) {
+                                     Address address = ((List<Address>)results.values).get(i);
+                                     String completeAddress = "";
+                                     for (int j = 0; j < address.getMaxAddressLineIndex(); ++j)
+                                         completeAddress += address.getAddressLine(j) + " ";
+                                     addresses.add(completeAddress);
+                                 }
+                             }
+                         };
+                     }
+                }
+        );
 
         ((AutoCompleteTextView) editText).setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -91,15 +123,6 @@ public class MainActivity extends AppCompatActivity {
                     if (editText.getText().toString().equals(""))
                         editText.setText(null);
                 }
-            }
-        });
-
-        editText.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                if (!adapter.isEmpty())
-                    ((AutoCompleteTextView) editText).showDropDown();
-                return false;
             }
         });
 
@@ -126,10 +149,7 @@ public class MainActivity extends AppCompatActivity {
         // as you specify a parent activity in AndroidManifest.xml.
 
         switch (item.getItemId()) {
-            case R.id.action_clear_history:
-                history = new ArrayList<>();
-                initAdapter();
-                Toast.makeText(this, "History cleared", Toast.LENGTH_SHORT).show();
+            case R.id.action_settings:
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
@@ -164,11 +184,6 @@ public class MainActivity extends AppCompatActivity {
         inputMethodManager.hideSoftInputFromWindow(v.getWindowToken(), 0);
     }
 
-    private void initAdapter() {
-        adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, history);
-        ((AutoCompleteTextView) editText).setAdapter(adapter);
-    }
-
     private void startMockingLocation() {
         editText.clearFocus();
         editText.setEnabled(false);
@@ -201,9 +216,6 @@ public class MainActivity extends AppCompatActivity {
         editor.putString("address", editText.getText().toString());
         editor.putLong("latitude", Double.doubleToRawLongBits(latitude));
         editor.putLong("longitude", Double.doubleToRawLongBits(longitude));
-        editor.putInt("size", adapter.getCount());
-        for (int i = 0; i < adapter.getCount(); ++i)
-            editor.putString(String.valueOf(i), adapter.getItem(i));
         editor.apply();
     }
 
@@ -227,11 +239,6 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(List<Address> addresses) {
             if (addresses != null && addresses.size() > 0) {
-                if (!history.contains(address)) {
-                    history.add(address);
-                    initAdapter();
-                }
-
                 latitude = addresses.get(0).getLatitude();
                 longitude = addresses.get(0).getLongitude();
 
