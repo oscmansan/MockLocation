@@ -3,8 +3,10 @@ package oscmansan.mocklocation;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.graphics.BitmapFactory;
 import android.location.Location;
@@ -15,6 +17,7 @@ import android.os.IBinder;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 import java.util.Timer;
@@ -25,6 +28,7 @@ public class InjectLocationService extends Service {
     private static final String LOG_TAG = InjectLocationService.class.getSimpleName();
 
     private static final int TIMER_PERIOD = 3000;
+    private static final String STOP_SERVICE = "oscmansan.mocklocation.STOP_SERVICE";
 
     private String mocLocationProvider;
     private LocationManager locationManager;
@@ -32,6 +36,7 @@ public class InjectLocationService extends Service {
     private String address;
     private double latitude;
     private double longitude;
+    private BroadcastReceiver receiver;
 
     @Override
     public void onCreate() {
@@ -58,6 +63,16 @@ public class InjectLocationService extends Service {
             public void onProviderDisabled(String provider) {
             }
         });
+
+        receiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                Intent actionIntent = new Intent(MainActivity.CLEAR_FIELDS);
+                LocalBroadcastManager broadcaster = LocalBroadcastManager.getInstance(InjectLocationService.this);
+                broadcaster.sendBroadcast(actionIntent);
+                stopSelf();
+            }
+        };
     }
 
     @Override
@@ -76,6 +91,8 @@ public class InjectLocationService extends Service {
         }
 
         startForeground(1, buildNotification());
+
+        registerReceiver(receiver, new IntentFilter(STOP_SERVICE));
 
         Timer timer = new Timer();
         initTimerTask();
@@ -100,6 +117,10 @@ public class InjectLocationService extends Service {
                 PendingIntent.FLAG_UPDATE_CURRENT);
         builder.setContentIntent(contentIntent);
 
+        Intent actionIntent = new Intent(STOP_SERVICE);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, actionIntent, 0);
+        builder.addAction(R.drawable.ic_clear_black_24dp, "Stop it", pendingIntent);
+
         return builder.build();
     }
 
@@ -122,6 +143,7 @@ public class InjectLocationService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        unregisterReceiver(receiver);
         timerTask.cancel();
         locationManager.removeTestProvider(mocLocationProvider);
 

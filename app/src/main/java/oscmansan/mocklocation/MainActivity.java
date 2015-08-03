@@ -2,8 +2,10 @@ package oscmansan.mocklocation;
 
 import android.app.Activity;
 import android.app.ActivityManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.location.Address;
 import android.location.Geocoder;
@@ -12,6 +14,7 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.design.widget.Snackbar;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.view.Gravity;
 import android.view.Menu;
@@ -33,6 +36,8 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
 
     private static final String LOG_TAG = MainActivity.class.getSimpleName();
+    public static final String CLEAR_FIELDS = "oscmansan.mocklocation.CLEAR_FIELDS";
+
     private double latitude;
     private double longitude;
 
@@ -40,6 +45,7 @@ public class MainActivity extends AppCompatActivity {
     private EditText editText;
     private SharedPreferences sharedPref;
     private ArrayList<String> addresses;
+    private BroadcastReceiver receiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,41 +76,42 @@ public class MainActivity extends AppCompatActivity {
         editText = (EditText) findViewById(R.id.edit_text);
         addresses = new ArrayList<>();
         ((AutoCompleteTextView) editText).setAdapter(new ArrayAdapter<String>(
-                this,
-                android.R.layout.simple_spinner_dropdown_item,
-                addresses) {
-                     @Override
-                     public Filter getFilter() {
-                         return new Filter() {
-                             @Override
-                             protected FilterResults performFiltering(CharSequence constraint) {
-                                 FilterResults results = new FilterResults();
-                                 try {
-                                     Geocoder geocoder = new Geocoder(MainActivity.this);
-                                     List<Address> addresses = geocoder.getFromLocationName(constraint.toString(), 5);
-                                     results.values = addresses;
-                                     results.count = addresses.size();
-                                 }
-                                 catch (IOException e) {
-                                     e.printStackTrace();
-                                 }
-                                 return results;
-                             }
+                                                             this,
+                                                             android.R.layout.simple_spinner_dropdown_item,
+                                                             addresses) {
+                                                         @Override
+                                                         public Filter getFilter() {
+                                                             return new Filter() {
+                                                                 @Override
+                                                                 protected FilterResults performFiltering(CharSequence constraint) {
+                                                                     FilterResults results = new FilterResults();
+                                                                     if (constraint != null) {
+                                                                         try {
+                                                                             Geocoder geocoder = new Geocoder(MainActivity.this);
+                                                                             List<Address> addresses = geocoder.getFromLocationName(constraint.toString(), 5);
+                                                                             results.values = addresses;
+                                                                             results.count = addresses.size();
+                                                                         } catch (IOException e) {
+                                                                             e.printStackTrace();
+                                                                         }
+                                                                     }
+                                                                     return results;
+                                                                 }
 
-                             @Override
-                             protected void publishResults(CharSequence constraint, FilterResults results) {
-                                 addresses.clear();
-                                 for (int i = 0; i < results.count; ++i) {
-                                     Address address = ((List<Address>)results.values).get(i);
-                                     String completeAddress = "";
-                                     for (int j = 0; j < address.getMaxAddressLineIndex(); ++j)
-                                         completeAddress += address.getAddressLine(j) + " ";
-                                     addresses.add(completeAddress);
-                                 }
-                             }
-                         };
-                     }
-                }
+                                                                 @Override
+                                                                 protected void publishResults(CharSequence constraint, FilterResults results) {
+                                                                     addresses.clear();
+                                                                     for (int i = 0; i < results.count; ++i) {
+                                                                         Address address = ((List<Address>) results.values).get(i);
+                                                                         String completeAddress = "";
+                                                                         for (int j = 0; j < address.getMaxAddressLineIndex(); ++j)
+                                                                             completeAddress += address.getAddressLine(j) + " ";
+                                                                         addresses.add(completeAddress);
+                                                                     }
+                                                                 }
+                                                             };
+                                                         }
+                                                     }
         );
 
         ((AutoCompleteTextView) editText).setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -133,6 +140,13 @@ public class MainActivity extends AppCompatActivity {
                 return true;
             }
         });
+
+        receiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                clearFields();
+            }
+        };
     }
 
     @Override
@@ -159,13 +173,24 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
+
+        LocalBroadcastManager.getInstance(this).registerReceiver(
+                receiver,
+                new IntentFilter(CLEAR_FIELDS)
+        );
+
         if (isMyServiceRunning(InjectLocationService.class))
             restoreState();
+        else
+            clearFields();
     }
 
     @Override
     protected void onStop() {
         super.onStop();
+
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(receiver);
+
         saveState();
     }
 
@@ -193,11 +218,16 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void stopMockingLocation() {
+        clearFields();
+        Intent intent = new Intent(this, InjectLocationService.class);
+        stopService(intent);
+    }
+
+    private void clearFields() {
         editText.setText("");
         editText.setEnabled(true);
         findViewById(R.id.status).setVisibility(View.INVISIBLE);
-        Intent intent = new Intent(this, InjectLocationService.class);
-        stopService(intent);
+        if (sw.isChecked()) sw.setChecked(false);
     }
 
     private void restoreState() {
