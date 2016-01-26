@@ -46,23 +46,28 @@ public class InjectLocationService extends Service {
         locationManager.addTestProvider(mocLocationProvider, false, false, false, false,
                 true, true, true, 0, 5);
         locationManager.setTestProviderEnabled(mocLocationProvider, true);
-        locationManager.requestLocationUpdates(mocLocationProvider, 0, 0, new LocationListener() {
-            @Override
-            public void onLocationChanged(Location location) {
-            }
+        try {
+            locationManager.requestLocationUpdates(mocLocationProvider, 0, 0, new LocationListener() {
+                @Override
+                public void onLocationChanged(Location location) {
+                }
 
-            @Override
-            public void onStatusChanged(String provider, int status, Bundle extras) {
-            }
+                @Override
+                public void onStatusChanged(String provider, int status, Bundle extras) {
+                }
 
-            @Override
-            public void onProviderEnabled(String provider) {
-            }
+                @Override
+                public void onProviderEnabled(String provider) {
+                }
 
-            @Override
-            public void onProviderDisabled(String provider) {
-            }
-        });
+                @Override
+                public void onProviderDisabled(String provider) {
+                }
+            });
+        }
+        catch (SecurityException e) {
+            Log.d(LOG_TAG, "Permissions not granted");
+        }
 
         receiver = new BroadcastReceiver() {
             @Override

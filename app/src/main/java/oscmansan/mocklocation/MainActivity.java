@@ -1,5 +1,6 @@
 package oscmansan.mocklocation;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.BroadcastReceiver;
@@ -7,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
 import android.net.Uri;
@@ -14,6 +16,8 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.design.widget.Snackbar;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.view.Gravity;
@@ -33,6 +37,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import butterknife.Bind;
+import butterknife.ButterKnife;
+
 public class MainActivity extends AppCompatActivity {
 
     private static final String LOG_TAG = MainActivity.class.getSimpleName();
@@ -41,8 +48,11 @@ public class MainActivity extends AppCompatActivity {
     private double latitude;
     private double longitude;
 
-    private Switch sw;
-    private EditText editText;
+    @Bind(R.id.sw)
+    Switch sw;
+    @Bind(R.id.edit_text)
+    EditText editText;
+
     private SharedPreferences sharedPref;
     private ArrayList<String> addresses;
     private BroadcastReceiver receiver;
@@ -51,16 +61,37 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        ButterKnife.bind(this);
 
-        sw = (Switch) findViewById(R.id.sw);
         sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
 
         sw.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (sw.isChecked()) {
-                    startMockingLocation();
-                } else {
+                    String[] needed_permissions = new String[] {
+                            Manifest.permission.ACCESS_COARSE_LOCATION,
+                            Manifest.permission.ACCESS_FINE_LOCATION
+                    };
+                    boolean all_granted = true;
+                    for (String permission : needed_permissions) {
+                        if (ContextCompat.checkSelfPermission(MainActivity.this, permission) != PackageManager.PERMISSION_GRANTED) {
+                            all_granted = false;
+                            break;
+                        }
+                    }
+                    if (all_granted)
+                        startMockingLocation();
+                    else {
+                        sw.setChecked(false);
+                        ActivityCompat.requestPermissions(
+                                MainActivity.this,
+                                needed_permissions,
+                                1
+                        );
+                    }
+                }
+                else {
                     stopMockingLocation();
                 }
             }
@@ -73,7 +104,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        editText = (EditText) findViewById(R.id.edit_text);
         addresses = new ArrayList<>();
         ((AutoCompleteTextView) editText).setAdapter(new ArrayAdapter<String>(
                                                              this,
@@ -307,7 +337,7 @@ public class MainActivity extends AppCompatActivity {
                         Snackbar.LENGTH_SHORT
                 );
                 View snackbarView = snackbar.getView();
-                snackbarView.setBackgroundResource(android.support.design.R.color.error_color);
+                snackbarView.setBackgroundResource(android.support.design.R.color.design_textinput_error_color);
                 ((TextView) snackbarView.findViewById(android.support.design.R.id.snackbar_text))
                         .setGravity(Gravity.CENTER_HORIZONTAL);
                 snackbar.show();
