@@ -44,6 +44,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String LOG_TAG = MainActivity.class.getSimpleName();
     public static final String CLEAR_FIELDS = "oscmansan.mocklocation.CLEAR_FIELDS";
+    public static final int MY_PERMISSIONS_REQUEST = 1;
 
     private double latitude;
     private double longitude;
@@ -83,11 +84,10 @@ public class MainActivity extends AppCompatActivity {
                     if (all_granted)
                         startMockingLocation();
                     else {
-                        sw.setChecked(false);
                         ActivityCompat.requestPermissions(
                                 MainActivity.this,
                                 needed_permissions,
-                                1
+                                MY_PERMISSIONS_REQUEST
                         );
                     }
                 }
@@ -177,6 +177,21 @@ public class MainActivity extends AppCompatActivity {
                 clearFields();
             }
         };
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        switch (requestCode) {
+            case MY_PERMISSIONS_REQUEST: {
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    startMockingLocation();
+                }
+                else {
+                    sw.setChecked(false);
+                }
+            }
+        }
     }
 
     @Override
